@@ -40,6 +40,6 @@ uvicorn main:app --reload
 Using Redis for application level caching, i.e., a cache memory between the application and PostreSQL database.
 
 Pipeline:
-- Hit weather API to retrieve weather information of desired location. Store the data in DB + cache it using Redis with a TTL of 30 minutes
-- Using location as the key, if it exists in cache, it's a cache hit; else cache miss
-- In case of cache miss, query the database
+- Hit weather API to retrieve weather information of desired location. Store the data in DB + cache it using Redis with a TTL of 30 minutes.
+- Using location as the key, if it exists in cache, it's a cache hit; else cache miss.
+- In case of cache miss, query the database. Database is kept fresh using a time difference check. If the entry is stale, the external API is hit, necessary fields updated and cache updated.
