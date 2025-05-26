@@ -70,7 +70,7 @@ def get_weather(location_q: str, db: db_dependency):
         .first()
     )
     
-    if db_entry and db_entry.localtime > datetime.now() - timedelta(minutes=30):
+    if db_entry and db_entry.fetched_at > datetime.now() - timedelta(minutes=30):
         response = {
             "location_name": db_entry.location_name,
             "region": db_entry.region,
@@ -102,28 +102,42 @@ def get_weather(location_q: str, db: db_dependency):
 
     if res.status_code != 200:
         raise HTTPException(status_code=400, detail="Failed to fetch weather data")
+    
 
     data = res.json()
     location = data["location"]
     current = data["current"]
+    
+    # If DB entry for location found
+    if db_entry:
+        print(f"Found an existing record")
+        db_entry.localtime = location["localtime"]
+        db_entry.temp_c = current["temp_c"]
+        db_entry.temp_f = current["temp_f"]
+        db_entry.condition = current["condition"]["text"]
+        db_entry.fetched_at = datetime.now()
+        
+        db.commit()
+        
+        print(f"Updated existing DB record for location: {location_q}")
+    else:
+        current_weather = models.Weather(
+            location_name=location["name"],
+            region=location["region"],
+            country=location["country"],
+            latitude=location["lat"],
+            longitude=location["lon"],
+            timezone=location["tz_id"],
+            localtime=location["localtime"],
+            temp_c=current["temp_c"],
+            temp_f=current["temp_f"],
+            condition=current["condition"]["text"]
+        )
 
-    current_weather = models.Weather(
-        location_name=location["name"],
-        region=location["region"],
-        country=location["country"],
-        latitude=location["lat"],
-        longitude=location["lon"],
-        timezone=location["tz_id"],
-        localtime=location["localtime"],
-        temp_c=current["temp_c"],
-        temp_f=current["temp_f"],
-        condition=current["condition"]["text"]
-    )
-
-    # Add to DB
-    db.add(current_weather)
-    db.commit()
-    db.refresh(current_weather)
+        # Add to DB
+        db.add(current_weather)
+        db.commit()
+        db.refresh(current_weather)
     
     # Add to cache
     redis_client.setex(location_key, 1800, json.dumps({
