@@ -163,6 +163,7 @@ def get_weather(location_q: str, db: db_dependency):
     print(f"Hitting external API for location : {location_q}")
     return data
 
+
 @app.get("/forecast")
 def get_forecast(location: str, days: int):
     res = requests.get(url=f"{WEATHER_API_URL}/forecast.json?key={WEATHER_API_KEY}&q={location}&days={days}")
