@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 import models
 from database import engine, SessionLocal
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 load_dotenv()
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
@@ -70,6 +70,7 @@ def get_weather(location_q: str, db: db_dependency):
         .first()
     )
     
+    # if DB entry exists and is not stale, add to cache and return it
     if db_entry and db_entry.fetched_at > datetime.now() - timedelta(minutes=30):
         response = {
             "location_name": db_entry.location_name,
@@ -165,10 +166,115 @@ def get_weather(location_q: str, db: db_dependency):
 
 
 @app.get("/forecast")
-def get_forecast(location: str, days: int):
+def get_forecast(location: str, days: int, db: db_dependency):
+    
+    # Forecast limit is 5 days. Raise 400 error if days > 5
+    if days > 5:
+        raise HTTPException(status_code=400, detail="Forecast request cannot be more than 5 days")
+    
+    # We check for cache hit here
+    
+    location_forecast_key = f"forecast:{location.strip().lower()}:{days}"
+    cached = redis_client.get(location_forecast_key)
+    if cached:
+        print(f"Cache hit for forecast location: {location}")
+        
+        data = json.loads(cached)
+        return data
+    
+    # Query database to check if location exists. Do not add again
+    db_entry = (
+        db.query(models.Weather)
+        .filter(models.Weather.location_name.ilike(location.strip().lower()))
+        .options(joinedload(models.Weather.forecasts).joinedload(models.ForecastDay.hours))
+        .order_by(models.Weather.localtime.desc())
+        .first()
+    )
+    
+    # IF entry exists, let's check if it's stale
+    # If stale, update the Weather table and then add the updated data to redis cache
+    
+    # If db_entry exists and is not stale
+    if db_entry and db_entry.localtime > datetime.now() - timedelta(hours=1):
+        forecast_days = []
+        for day in db_entry.forecasts:
+            forecast_hours = []
+            for hour in day.hours:
+                forecast_hours.append({
+                    "time": hour.time.isoformat(),
+                    "temp_c": hour.temp_c,
+                    "temp_f": hour.temp_f,
+                    "condition": hour.condition.text
+                })
+                    
+            forecast_days.append({
+                "date": day.date.isoformat(),
+                "maxtemp_c": day.maxtemp_c,
+                "mintemp_c": day.mintemp_c,
+                "maxtemp_f": day.maxtemp_f,
+                "mintemp_f": day.mintemp_f,
+                "avgtemp_c": day.avgtemp_c,
+                "avgtemp_f": day.avgtemp_f,
+                "condition": day.condition.text,
+                "hours": forecast_hours
+            })
+        
+        response = {
+            "location_name": db_entry.location_name,
+            "region": db_entry.region,
+            "country": db_entry.country,
+            "latitude": db_entry.latitude,
+            "longitude": db_entry.longitude,
+            "timezone": db_entry.timezone,
+            "localtime": db_entry.localtime.isoformat(),
+            "temp_c": db_entry.temp_c,
+            "temp_f": db_entry.temp_f,
+            "condition": db_entry.condition,
+            "forecast_days": forecast_days
+        }
+        
+        redis_client.setex(location_forecast_key, time=3600, value=json.dumps(response))
+        
+        return response
+    
+    
+    ################################################################################
+    # Hitting the external API endpoint
     res = requests.get(url=f"{WEATHER_API_URL}/forecast.json?key={WEATHER_API_KEY}&q={location}&days={days}")
 
     if res.status_code != 200:
         raise HTTPException(status_code=400, detail="Failed to fetch forecast data")
+    
+    data = res.json()
+    location_data = data["location"]
+    current = data["current"]
+    forecast = data["forecast"]["forecastday"]
+    
+    if db_entry:
+        print(f"Updating an existing record in DB for location: {location}...")
+        
+        # Update tables, return nothing here
+        forecast_days = []
+        for day in db_entry.forecasts:
+            forecast_hours = []
+            
+        # TODO: Update the Weather, ForecastDay and ForecastHour records
+        # Traverse through forecast -> inner for loop in "hours" field
+        # Add every 4th hour to the list -> Update the forecast day record with new forecast["hours"] list
+        # Basically, do everything like you did in the loop above
+        
+        
+        # db_entry.localtime = location_data["localtime"]
+        # db_entry.temp_c = current["temp_c"]
+        # db_entry.temp_f = current["temp_f"]
+        # db_entry.condition = current["condition"]["text"]
+        # db_entry.fetched_at = datetime.now()
+        
+    else:
+        print(f"Creating new record in DB for location: {location}")
+        
+        # TODO: Create new Weather, ForecastDay and ForecastHour records for the data I retrieved through an API call
+        
+        
 
     return res.json()
