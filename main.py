@@ -11,6 +11,7 @@ import time
 from datetime import datetime, timedelta
 
 import models
+import utils
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session, joinedload
 
@@ -198,43 +199,44 @@ def get_forecast(location: str, days: int, db: db_dependency):
     
     # If db_entry exists and is not stale
     if db_entry and db_entry.localtime > datetime.now() - timedelta(hours=1):
-        forecast_days = []
-        for day in db_entry.forecasts:
-            forecast_hours = []
-            for hour in day.hours:
-                forecast_hours.append({
-                    "time": hour.time.isoformat(),
-                    "temp_c": hour.temp_c,
-                    "temp_f": hour.temp_f,
-                    "condition": hour.condition.text
-                })
+        # forecast_days = []
+        # for day in db_entry.forecasts:
+        #     forecast_hours = []
+        #     for hour in day.hours:
+        #         forecast_hours.append({
+        #             "time": hour.time.isoformat(),
+        #             "temp_c": hour.temp_c,
+        #             "temp_f": hour.temp_f,
+        #             "condition": hour.condition.text
+        #         })
                     
-            forecast_days.append({
-                "date": day.date.isoformat(),
-                "maxtemp_c": day.maxtemp_c,
-                "mintemp_c": day.mintemp_c,
-                "maxtemp_f": day.maxtemp_f,
-                "mintemp_f": day.mintemp_f,
-                "avgtemp_c": day.avgtemp_c,
-                "avgtemp_f": day.avgtemp_f,
-                "condition": day.condition.text,
-                "hours": forecast_hours
-            })
+        #     forecast_days.append({
+        #         "date": day.date.isoformat(),
+        #         "maxtemp_c": day.maxtemp_c,
+        #         "mintemp_c": day.mintemp_c,
+        #         "maxtemp_f": day.maxtemp_f,
+        #         "mintemp_f": day.mintemp_f,
+        #         "avgtemp_c": day.avgtemp_c,
+        #         "avgtemp_f": day.avgtemp_f,
+        #         "condition": day.condition.text,
+        #         "hours": forecast_hours
+        #     })
         
-        response = {
-            "location_name": db_entry.location_name,
-            "region": db_entry.region,
-            "country": db_entry.country,
-            "latitude": db_entry.latitude,
-            "longitude": db_entry.longitude,
-            "timezone": db_entry.timezone,
-            "localtime": db_entry.localtime.isoformat(),
-            "temp_c": db_entry.temp_c,
-            "temp_f": db_entry.temp_f,
-            "condition": db_entry.condition,
-            "forecast_days": forecast_days
-        }
+        # response = {
+        #     "location_name": db_entry.location_name,
+        #     "region": db_entry.region,
+        #     "country": db_entry.country,
+        #     "latitude": db_entry.latitude,
+        #     "longitude": db_entry.longitude,
+        #     "timezone": db_entry.timezone,
+        #     "localtime": db_entry.localtime.isoformat(),
+        #     "temp_c": db_entry.temp_c,
+        #     "temp_f": db_entry.temp_f,
+        #     "condition": db_entry.condition,
+        #     "forecast_days": forecast_days
+        # }
         
+        response = utils.create_forecast_response(db_entry)
         redis_client.setex(location_forecast_key, time=3600, value=json.dumps(response))
         
         return response
@@ -302,6 +304,7 @@ def get_forecast(location: str, days: int, db: db_dependency):
                     "temp_f": hour.temp_f,
                     "condition": hour.condition.text
                 })
+                forecast_hour_entry = models.ForecastHour()
                     
             forecast_days.append({
                 "date": day.date.isoformat(),
@@ -314,25 +317,27 @@ def get_forecast(location: str, days: int, db: db_dependency):
                 "condition": day.condition.text,
                 "hours": forecast_hours
             })
+            
+            forecast_day_entry = models.ForecastDay()
         
-        response = {
-            "location_name": db_entry.location_name,
-            "region": db_entry.region,
-            "country": db_entry.country,
-            "latitude": db_entry.latitude,
-            "longitude": db_entry.longitude,
-            "timezone": db_entry.timezone,
-            "localtime": db_entry.localtime.isoformat(),
-            "temp_c": db_entry.temp_c,
-            "temp_f": db_entry.temp_f,
-            "condition": db_entry.condition,
-            "forecast_days": forecast_days
-        }
+        weather_entry = models.Weather(
+            location_name=location_data["name"],
+            region=location_data["region"],
+            country=location_data["country"],
+            latitude=location_data["lat"],
+            longitude=location_data["lon"],
+            timezone=location_data["tz_id"],
+            localtime=datetime.isoformat(location_data["localtime"]),
+            temp_c=current["temp_c"],
+            temp_f=current["temp_f"],
+            condition=current["condition"]["text"],
+            forecasts=forecast_days
+        )
         
-        # TODO: Create new Weather, ForecastDay and ForecastHour records for the data I retrieved through an API call
+        # TODO: Fix this part where you create ForecastDay and ForecastHour objects. It's a lot more complicated than you initially thought.
+        # Link tables with IDs and all that.
         
-        
-        
+    # Add to cache. This ensures that updated or new DB entries are found in cache, ensuring freshness.
         
 
     return res.json()
