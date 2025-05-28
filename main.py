@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import redis
-from redis.cache import CacheConfig
 import json
 from typing import Annotated, List
 import requests
@@ -58,6 +57,7 @@ def get_weather(location_q: str, db: db_dependency):
         end_time = time.time()
         duration = round((end_time - start_time) * 1000, 2)
         print(f"Latency (ms) for cache hit: {duration} ms")
+        #####################################
         
         return json.loads(cached)
     
@@ -91,6 +91,7 @@ def get_weather(location_q: str, db: db_dependency):
         duration = round((end_time  - start_time) * 1000, 2)
         print(f"DB queried for location: {location_q}")
         print(f"Latency (ms) for DB query: {duration} ms")
+        #####################################
         
         
         response["latency (ms)"] = duration
@@ -158,6 +159,7 @@ def get_weather(location_q: str, db: db_dependency):
     end_time = time.time()
     duration = round((end_time - start_time) * 1000, 2)
     print(f"Latency (ms): {duration} ms")
+    #####################################
     
     data["latency_ms"] = duration
 
@@ -253,27 +255,83 @@ def get_forecast(location: str, days: int, db: db_dependency):
     if db_entry:
         print(f"Updating an existing record in DB for location: {location}...")
         
+        db_entry.localtime = location_data["localtime"]
+        db_entry.temp_c = current["temp_c"]
+        db_entry.temp_f = current["temp_f"]
+        db_entry.condition = current["condition"]["text"]
+        
         # Update tables, return nothing here
-        forecast_days = []
-        for day in db_entry.forecasts:
-            forecast_hours = []
+        for i, day in enumerate(db_entry.forecasts):
+            forecast_day = forecast[i]
             
-        # TODO: Update the Weather, ForecastDay and ForecastHour records
-        # Traverse through forecast -> inner for loop in "hours" field
-        # Add every 4th hour to the list -> Update the forecast day record with new forecast["hours"] list
-        # Basically, do everything like you did in the loop above
+            day.date = forecast_day["date"].isoformat()
+            day.maxtemp_c = forecast_day["day"]["maxtemp_c"]
+            day.mintemp_c = forecast_day["day"]["mintemp_c"]
+            day.maxtemp_f = forecast_day["day"]["maxtemp_f"]
+            day.mintemp_f = forecast_day["day"]["mintemp_f"]
+            day.avgtemp_c = forecast_day["day"]["avgtemp_c"]
+            day.avgtemp_f = forecast_day["day"]["avgtemp_f"]
+            day.condition = forecast_day["day"]["condition"]["text"]
+            
+            for j, hour in enumerate(day.hours):
+                forecast_hour = forecast_day["hour"]
+                if j * 4 >= len(forecast_hour):
+                    break
+                hour_data = forecast_hour[j*4]
+                
+                hour.time = datetime.fromisoformat(hour_data["time"])
+                hour.temp_c = hour_data["temp_c"]
+                hour.temp_f = hour_data["temp_f"]
+                hour.condition = hour_data["condition"]["text"]
+                    
+        db.commit()
         
+        print(f"Updated existing DB record for location: {location}")
         
-        # db_entry.localtime = location_data["localtime"]
-        # db_entry.temp_c = current["temp_c"]
-        # db_entry.temp_f = current["temp_f"]
-        # db_entry.condition = current["condition"]["text"]
-        # db_entry.fetched_at = datetime.now()
         
     else:
         print(f"Creating new record in DB for location: {location}")
         
+        forecast_days = []
+        for day in db_entry.forecasts:
+            forecast_hours = []
+            for hour in day.hours:
+                forecast_hours.append({
+                    "time": hour.time.isoformat(),
+                    "temp_c": hour.temp_c,
+                    "temp_f": hour.temp_f,
+                    "condition": hour.condition.text
+                })
+                    
+            forecast_days.append({
+                "date": day.date.isoformat(),
+                "maxtemp_c": day.maxtemp_c,
+                "mintemp_c": day.mintemp_c,
+                "maxtemp_f": day.maxtemp_f,
+                "mintemp_f": day.mintemp_f,
+                "avgtemp_c": day.avgtemp_c,
+                "avgtemp_f": day.avgtemp_f,
+                "condition": day.condition.text,
+                "hours": forecast_hours
+            })
+        
+        response = {
+            "location_name": db_entry.location_name,
+            "region": db_entry.region,
+            "country": db_entry.country,
+            "latitude": db_entry.latitude,
+            "longitude": db_entry.longitude,
+            "timezone": db_entry.timezone,
+            "localtime": db_entry.localtime.isoformat(),
+            "temp_c": db_entry.temp_c,
+            "temp_f": db_entry.temp_f,
+            "condition": db_entry.condition,
+            "forecast_days": forecast_days
+        }
+        
         # TODO: Create new Weather, ForecastDay and ForecastHour records for the data I retrieved through an API call
+        
+        
         
         
 
