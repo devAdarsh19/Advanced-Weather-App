@@ -186,7 +186,13 @@ def get_forecast(location: str, days: int, db: db_dependency):
         
         data = json.loads(cached)
         
+        ######## Latency calculation ########
         end_time = time.time()
+        duration = round((end_time - start_time) * 1000, 2)
+        print(f"Latency (ms): {duration} ms")
+        #####################################
+        
+        data["latency_ms"] = duration
         return data
     
     # Query database to check if location exists. Do not add again
@@ -207,7 +213,13 @@ def get_forecast(location: str, days: int, db: db_dependency):
         response = utils.create_forecast_response(db_entry)
         redis_client.setex(location_forecast_key, time=3600, value=json.dumps(response))
         
+        ######## Latency calculation ########
         end_time = time.time()
+        duration = round((end_time - start_time) * 1000, 2)
+        print(f"Latency (ms): {duration} ms")
+        #####################################
+        
+        response["latency_ms"] = duration
         return response
     
     
@@ -316,5 +328,11 @@ def get_forecast(location: str, days: int, db: db_dependency):
     
     redis_client.setex(location_forecast_key, time=3600, value=json.dumps(cache_data))
 
+    ######## Latency calculation ########
     end_time = time.time()
-    return res.json()
+    duration = round((end_time - start_time) * 1000, 2)
+    print(f"Latency (ms): {duration} ms")
+    #####################################
+    
+    data["latency_ms"] = duration
+    return data
