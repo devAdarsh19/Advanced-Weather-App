@@ -36,7 +36,7 @@ uvicorn main:app --reload
 ```
 
 ## Principles Applied
-### Latency (Only on current weather fetch)
+### Latency
 Using Redis for application level caching, i.e., a cache memory between the application and PostreSQL database.
 
 Pipeline:
