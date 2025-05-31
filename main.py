@@ -1,5 +1,8 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import redis
@@ -34,6 +37,10 @@ models.Base.metadata.create_all(bind=engine)
 # Initialize Redis client
 redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
 
+limiter = Limiter(key_func=get_remote_address, storage_uri="redis://localhost:6379")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 def get_db():
     db = SessionLocal()
     try:
@@ -44,7 +51,8 @@ def get_db():
 db_dependency = Annotated[Session, Depends(get_db)]
 
 @app.get("/weather")
-def get_weather(location_q: str, db: db_dependency):
+@limiter.limit("5/minute")
+def get_weather(location_q: str, db: db_dependency, request: Request):
     start_time = time.time()
     
     # Check for cached data in redis
@@ -169,7 +177,8 @@ def get_weather(location_q: str, db: db_dependency):
 
 
 @app.get("/forecast")
-def get_forecast(location: str, days: int, db: db_dependency):
+@limiter.limit("5/minute")
+def get_forecast(location: str, days: int, db: db_dependency, request: Request):
     
     start_time = time.time()
     
@@ -235,6 +244,8 @@ def get_forecast(location: str, days: int, db: db_dependency):
     current = data["current"]
     forecast = data["forecast"]["forecastday"]
     
+    cache_weather_entry = None
+    
     if db_entry:
         print(f"Updating an existing record in DB for location: {location}...")
         
@@ -268,6 +279,7 @@ def get_forecast(location: str, days: int, db: db_dependency):
                 hour.condition = hour_data["condition"]["text"]
                     
         db.commit()
+        cache_weather_entry = db_entry
         
         print(f"Updated existing DB record for location: {location}")
         
@@ -317,14 +329,12 @@ def get_forecast(location: str, days: int, db: db_dependency):
                 
         db.add(weather_entry)
         db.commit()
-        # db.refresh(weather_entry)
-            
         
-        # TODO: Fix this part where you create ForecastDay and ForecastHour objects. It's a lot more complicated than you initially thought.
-        # Link tables with IDs and all that.
+        cache_weather_entry = weather_entry
+        # db.refresh(weather_entry)
         
     # Add to cache. This ensures that updated or new DB entries are found in cache, ensuring freshness.
-    cache_data = utils.serialize_weather_data(weather_entry)
+    cache_data = utils.serialize_weather_data(cache_weather_entry)
     
     redis_client.setex(location_forecast_key, time=3600, value=json.dumps(cache_data))
 
