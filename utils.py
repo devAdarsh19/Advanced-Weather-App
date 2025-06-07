@@ -1,5 +1,7 @@
 import json
 import datetime
+from functools import wraps
+import time
 from models import Weather
 
 
@@ -22,7 +24,7 @@ def create_forecast_response(db_entry: Weather):
                 "time": hour.time.isoformat(),
                 "temp_c": hour.temp_c,
                 "temp_f": hour.temp_f,
-                "condition": hour.condition.text
+                "condition": hour.condition
             })
                     
         forecast_days.append({
@@ -33,7 +35,7 @@ def create_forecast_response(db_entry: Weather):
             "mintemp_f": day.mintemp_f,
             "avgtemp_c": day.avgtemp_c,
             "avgtemp_f": day.avgtemp_f,
-            "condition": day.condition.text,
+            "condition": day.condition,
             "hours": forecast_hours
         })
         
@@ -98,4 +100,25 @@ def serialize_weather_data(db_entry: Weather):
             for day in db_entry.forecasts
         ]
     }
+    
+    
+def logger(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        print(f" ----- Calling '{func.__name__}' ----- ")
+        print(f"Arguments: args={args} | kwargs={kwargs}")
+        start_time = time.time()
+        try:
+            result = func(*args, **kwargs)
+            print(f"Function {func.__name__} returned: \n{result}")
+            return result
+        except Exception as e:
+            print(f"Error while execution: {e}")
+            raise
+        finally:
+            end_time = time.time()
+            print(f"Endpoint latency (in ms) for '{func.__name__}': {round((end_time - start_time) * 1000, 2)} ms")
+            result["latency_ms"] = round((end_time - start_time) * 1000, 2)
+            
+    return wrapper  
     
