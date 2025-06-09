@@ -11,7 +11,7 @@ const Weather = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    alert("Form submitted");
+    console.log("Form submitted");
     const response = await axios.get(
       `http://localhost:8000/v1/weather?location=${locationData}`
     );
