@@ -108,17 +108,35 @@ def logger(func):
         print(f" ----- Calling '{func.__name__}' ----- ")
         print(f"Arguments: args={args} | kwargs={kwargs}")
         start_time = time.time()
+        
+        result = None
+        result_dict = {}
+        
         try:
             result = func(*args, **kwargs)
-            print(f"Function {func.__name__} returned: \n{result}")
-            return result
         except Exception as e:
-            print(f"Error while execution: {e}")
+            print(f"[ERROR] Error while function execution: {e}")
             raise
-        finally:
-            end_time = time.time()
-            print(f"Endpoint latency (in ms) for '{func.__name__}': {round((end_time - start_time) * 1000, 2)} ms")
-            result["latency_ms"] = round((end_time - start_time) * 1000, 2)
+            
+        try:
+            if isinstance(result, str):
+                result_dict = json.loads(result)
+                print(f"[LOGGER] Function {func.__name__} returned {result}")
+            elif isinstance(result, dict):
+                result_dict = result
+                print(f"[LOGGER] Function {func.__name__} returned {result}")
+            else:
+                raise ValueError("Incorrect return type from function. Expected str or dict.")
+        except Exception as e:
+            print(f"[ERROR] Error while parsing JSON: {e}")
+        # finally:
+        
+        end_time = time.time()
+        result_dict["latency_ms"] = round((end_time - start_time) * 1000, 2)
+            
+        print(f"[LOGGER] Endpoint latency (in ms) for '{func.__name__}': {round((end_time - start_time) * 1000, 2)} ms")
+        return result_dict       
+        
             
     return wrapper  
     

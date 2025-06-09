@@ -140,8 +140,7 @@ def get_weather(db: db_dependency, request: Request, location_q: str = Query(...
             db.commit()
             db.refresh(current_weather)
         
-        # Add to cache
-        redis_client.setex(location_key, 1800, json.dumps({
+        weather_data = json.dumps({
             "location_name":location["name"],
             "region":location["region"],
             "country":location["country"],
@@ -152,17 +151,19 @@ def get_weather(db: db_dependency, request: Request, location_q: str = Query(...
             "temp_c":current["temp_c"],
             "temp_f":current["temp_f"],
             "condition":current["condition"]["text"]
-        }))
+        })
+        # Add to cache
+        redis_client.setex(location_key, 1800, weather_data)
 
         
-        return data
+        return weather_data
     
     return get_weather()
 
 
 @app.get("/v1/forecast")
 @limiter.limit("5/minute")
-def get_forecast(location: str, days: int, db: db_dependency, request: Request):
+def get_forecast(db: db_dependency, request: Request, location: str = Query(..., alias="location"), days: int = Query(..., alias="days")):
     
     @logger
     def get_forecast():
@@ -305,9 +306,10 @@ def get_forecast(location: str, days: int, db: db_dependency, request: Request):
             # db.refresh(weather_entry)
             
         # Add to cache. This ensures that updated or new DB entries are found in cache, ensuring freshness.
-        cache_data = utils.serialize_weather_data(cache_weather_entry)
+        cache_data = json.dumps(utils.serialize_weather_data(cache_weather_entry))
         
-        redis_client.setex(location_forecast_key, time=3600, value=json.dumps(cache_data))
+        redis_client.setex(location_forecast_key, time=3600, value=cache_data)
 
-        return data
+        return cache_data
+    
     return get_forecast()
