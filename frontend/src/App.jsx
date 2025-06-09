@@ -12,10 +12,8 @@ function App() {
 
       {/* Get current weather */}
       <Weather />
-      
 
       {/* Get forecast */}
-      
     </>
   );
 }
