@@ -1,0 +1,39 @@
+
+
+.navbar {
+    height: 60px;
+    background-color: darkslategray;
+    z-index: 999;
+    position: sticky;
+}
+
+.nav-items {
+    display: flex;
+    justify-content: space-between;
+}
+
+.nav-items li {
+    list-style: none;
+    margin: 20px 0px;
+    font-weight: 600;
+    color: white;
+}
+
+.nav-items .logo {
+    padding-left: 20px;
+}
+
+.nav-items .router-elements {
+    display: flex;
+    gap: 50px;
+    padding-right: 20px;
+}
+
+
+
+
+
+
+
+
+

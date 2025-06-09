@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -53,9 +53,9 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 
 
-@app.get("/weather")
+@app.get("/v1/weather")
 @limiter.limit("5/minute")
-def get_weather(location_q: str, db: db_dependency, request: Request):
+def get_weather(db: db_dependency, request: Request, location_q: str = Query(..., alias="location")):
     @logger
     def get_weather():
         
@@ -160,7 +160,7 @@ def get_weather(location_q: str, db: db_dependency, request: Request):
     return get_weather()
 
 
-@app.get("/forecast")
+@app.get("/v1/forecast")
 @limiter.limit("5/minute")
 def get_forecast(location: str, days: int, db: db_dependency, request: Request):
     
