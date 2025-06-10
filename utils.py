@@ -103,6 +103,18 @@ def serialize_weather_data(db_entry: Weather):
     
     
 def logger(func):
+    """
+    A logging decorator to log endpoint output, errors and execution times
+
+    Args:
+        func (_type_): A function to pass that is executed within the wrapper.
+
+    Raises:
+        ValueError: If the returned response is not a string or dictionary.
+
+    Returns:
+        _type_: Wrapper function
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         print(f" ----- Calling '{func.__name__}' ----- ")
