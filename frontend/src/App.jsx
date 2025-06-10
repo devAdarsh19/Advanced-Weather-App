@@ -11,9 +11,10 @@ function App() {
       <Navbar />
 
       {/* Get current weather */}
-      <Weather />
+      {/* <Weather /> */}
 
       {/* Get forecast */}
+      <Forecast />
     </>
   );
 }

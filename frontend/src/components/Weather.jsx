@@ -13,8 +13,12 @@ const Weather = () => {
     e.preventDefault();
     console.log("Form submitted");
     const response = await axios.get(
-      `http://localhost:8000/v1/weather?location=${locationData}`
-    );
+      `http://localhost:8000/v1/weather?location_q=${locationData}`
+    )
+    .catch((error) => {
+      console.log(error);
+      alert("[ERROR] Error fetching weather data.");
+    });
 
     // const data = await response.json()
     setWeatherData(response.data);
@@ -34,14 +38,17 @@ const Weather = () => {
             value={locationData}
             onChange={handleGetWeather}
           />
-          <span>{locationData}</span>
           <button type="submit">Get current weather</button>
         </form>
       </div>
 
       {weatherData && (
         <div>
-            <h2>{weatherData.location_name}</h2>
+            <h2>Location: {weatherData.location_name}</h2>
+            <h3>Condition: {weatherData.condition}</h3>
+            <h3>Localtime: {weatherData.localtime}</h3>
+            <h3>Temperature (℃): {weatherData.temp_c}</h3>
+            <h3>Temperature (℉): {weatherData.temp_f}</h3>
         </div>
       )}
     </>
