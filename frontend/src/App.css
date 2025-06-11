@@ -13,20 +13,34 @@
 }
 
 .nav-items li {
+    text-decoration: none;
     list-style: none;
     margin: 20px 0px;
     font-weight: 600;
     color: white;
 }
 
+#link {
+    text-decoration: none;
+    color: white;
+    font-weight: 600;
+}
+
 .nav-items .logo {
     padding-left: 20px;
+    text-decoration: none;
+    color: white;
+    font-size: 25px;
 }
 
 .nav-items .router-elements {
     display: flex;
-    gap: 50px;
-    padding-right: 20px;
+    gap: 20px;
+    padding-right: 5em;
+}
+
+button:hover {
+    cursor: pointer;
 }
 
 
