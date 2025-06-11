@@ -53,7 +53,7 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 
 
-@app.get("/v1/weather")
+@app.get("/api/weather")
 @limiter.limit("5/minute")
 def get_weather(db: db_dependency, request: Request, location_q: str = Query(..., alias="location")):
     @logger
@@ -161,7 +161,7 @@ def get_weather(db: db_dependency, request: Request, location_q: str = Query(...
     return get_weather()
 
 
-@app.get("/v1/forecast")
+@app.get("/api/forecast")
 @limiter.limit("5/minute")
 def get_forecast(db: db_dependency, request: Request, location: str = Query(..., alias="location"), days: int = Query(..., alias="days")):
     

@@ -13,7 +13,7 @@ const Weather = () => {
     e.preventDefault();
     console.log("Form submitted");
     const response = await axios.get(
-      `http://localhost:8000/v1/weather?location_q=${locationData}`
+      `http://localhost:8000/api/weather?location_q=${locationData}`
     )
     .catch((error) => {
       console.log(error);

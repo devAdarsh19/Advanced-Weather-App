@@ -22,7 +22,7 @@ const Forecast = () => {
     console.log("Form Submitted");
     const response = await axios
       .get(
-        `http://localhost:8000/v1/forecast?location=${forecastLocation}&days=${days}`
+        `http://localhost:8000/api/forecast?location=${forecastLocation}&days=${days}`
       )
       .catch((error) => {
         console.log(`Error: ${error}`);
