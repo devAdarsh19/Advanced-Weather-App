@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.background import BackgroundTask
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -10,6 +11,7 @@ import json
 from typing import Annotated, List
 import requests
 import os
+import httpx
 import time
 from datetime import datetime, timedelta
 
@@ -51,6 +53,15 @@ def get_db():
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
+home_page_weather_client = httpx.AsyncClient()
+
+@app.get("/home")
+async def home_page_weather():
+    @logger
+    async def home_page_weather():
+        #TODO: Implement home page weather data retrieval logic. For hotspots in your region and some popular cities.
+        # Will later implement fetching weather data for most searched locations.
+        
 
 
 @app.get("/api/weather")

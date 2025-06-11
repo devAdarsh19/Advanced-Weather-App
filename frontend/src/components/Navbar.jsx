@@ -13,7 +13,7 @@ const Navbar = () => {
                 <li><Link id="link" to="/">LOGO</Link></li>
               </div>
               <div className="router-elements">
-                <li><Link id="link">Home</Link></li>
+                <li><Link id="link" to="/">Home</Link></li>
                 <li><Link id="link">About</Link></li>
                 <li><Link id="link">Help</Link></li>
               </div>
