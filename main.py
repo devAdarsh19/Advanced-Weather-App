@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.background import BackgroundTask
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -27,6 +28,8 @@ WEATHER_API_URL = "https://api.weatherapi.com/v1"
 
 # Initialize FastAPI app
 app = FastAPI()
+# Add GZip compression for json responses (majorly for forecast responses)
+app.add_middleware(GZipMiddleware(app, minimum_size=1000))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -54,6 +57,8 @@ def get_db():
 db_dependency = Annotated[Session, Depends(get_db)]
 
 home_page_weather_client = httpx.AsyncClient()
+top_cities_india = ["Bengaluru", "Mumbai", "Delhi", "Chennai", "Kolkata", "Hyderabad", "Pune", "Ahmedabad"]
+top_cities_abroad = ["New York", "Tokyo", "London", "Sydney", "Paris", "Berlin", "Dubai"]
 
 @app.get("/home")
 async def home_page_weather():
@@ -61,7 +66,40 @@ async def home_page_weather():
     async def home_page_weather():
         #TODO: Implement home page weather data retrieval logic. For hotspots in your region and some popular cities.
         # Will later implement fetching weather data for most searched locations.
-        
+        weather_top_cities_india = []
+        weather_top_cities_abroad = []
+        for city in top_cities_india:
+            try:
+                response = await home_page_weather_client.get(f"http://localhost:8000/api/weather", params={"location_q": city})
+                data = json.loads(response)
+                weather_top_cities_india.append(json.dumps({
+                    "region": data["region"],
+                    "temperature_c": data["temp_c"],
+                    "temperature_f": data["temp_f"],
+                    "condition": data["condition"],
+                }))
+            
+            except httpx.RequestError as re:
+                print(f"[ERROR] Request error for {city}: {re}", flush=True)
+                weather_top_cities_india.append(json.dumps({
+                    "region": city,
+                    "error": "Network error while fetching weather data"
+                }))
+                
+            except httpx.HTTPStatusError as he:
+                print(f"[ERROR] HTTP Status error for {city}: {re}", flush=True)
+                weather_top_cities_india.append(json.dumps({
+                    "region": city,
+                    "error": "Failed to fetch weather data"
+                }))
+            
+            except Exception as e:
+                print(f"[ERROR] An unexpected error occurred for {city}: {re}", flush=True)
+                weather_top_cities_india.append(json.dumps({
+                    "region": city,
+                    "error": "Unexpected error"
+                }))
+            
 
 
 @app.get("/api/weather")
