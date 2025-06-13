@@ -65,8 +65,9 @@ top_cities_abroad = ["New York", "Tokyo", "London", "Sydney", "Paris", "Berlin",
 @logger
 async def home_page_weather_logic():
     endpoint_response = {}
-    #TODO: Implement home page weather data retrieval logic. For hotspots in your region and some popular cities.
-    # Will later implement fetching weather data for most searched locations.
+    
+    #TODO: Will later implement fetching weather data for most searched locations.
+    
     weather_top_cities_india = []
     weather_top_cities_abroad = []
     for city in top_cities_india:
