@@ -138,7 +138,7 @@ def logger(func):
                 result_dict = result
                 print(f"[LOGGER] Function {func.__name__} returned {result}")
             else:
-                raise ValueError("Incorrect return type from function. Expected str or dict.")
+                raise ValueError(f"Incorrect return type from function. Expected str or dict. Recieved {type(result)}")
         except Exception as e:
             print(f"[ERROR] Error while parsing JSON: {e}")
         # finally:
