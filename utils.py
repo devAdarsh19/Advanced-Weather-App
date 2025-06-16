@@ -1,5 +1,6 @@
 import json
 import datetime
+import inspect
 from functools import wraps
 import time
 from models import Weather
@@ -115,40 +116,76 @@ def logger(func):
     Returns:
         _type_: Wrapper function
     """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        print(f" ----- Calling '{func.__name__}' ----- ")
-        print(f"Arguments: args={args} | kwargs={kwargs}")
-        start_time = time.time()
-        
-        result = None
-        result_dict = {}
-        
-        try:
-            result = func(*args, **kwargs)
-        except Exception as e:
-            print(f"[ERROR] Error while function execution: {e}")
-            raise
+    if inspect.iscoroutinefunction(func):
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            print(f" ----- Calling '{func.__name__}' ----- ")
+            print(f"Arguments: args={args} | kwargs={kwargs}")
+            start_time = time.time()
             
-        try:
-            if isinstance(result, str):
-                result_dict = json.loads(result)
-                print(f"[LOGGER] Function {func.__name__} returned {result}")
-            elif isinstance(result, dict):
-                result_dict = result
-                print(f"[LOGGER] Function {func.__name__} returned {result}")
-            else:
-                raise ValueError(f"Incorrect return type from function. Expected str or dict. Recieved {type(result)}")
-        except Exception as e:
-            print(f"[ERROR] Error while parsing JSON: {e}")
-        # finally:
-        
-        end_time = time.time()
-        result_dict["latency_ms"] = round((end_time - start_time) * 1000, 2)
+            result = None
+            result_dict = {}
             
-        print(f"[LOGGER] Endpoint latency (in ms) for '{func.__name__}': {round((end_time - start_time) * 1000, 2)} ms")
-        return result_dict       
+            try:
+                result = await func(*args, **kwargs)
+            except Exception as e:
+                print(f"[ERROR] Error while function execution: {e}")
+                raise
+                
+            try:
+                if isinstance(result, str):
+                    result_dict = json.loads(result)
+                    print(f"[LOGGER] Function {func.__name__} returned {result}")
+                elif isinstance(result, dict):
+                    result_dict = result
+                    print(f"[LOGGER] Function {func.__name__} returned {result}")
+                else:
+                    raise ValueError(f"Incorrect return type from function. Expected str or dict. Recieved {type(result)}")
+            except Exception as e:
+                print(f"[ERROR] Error while parsing JSON: {e}")
+            # finally:
+            
+            end_time = time.time()
+            result_dict["latency_ms"] = round((end_time - start_time) * 1000, 2)
+                
+            print(f"[LOGGER] Endpoint latency (in ms) for '{func.__name__}': {round((end_time - start_time) * 1000, 2)} ms")
+            return result_dict  
+        return async_wrapper
+    else:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            print(f" ----- Calling '{func.__name__}' ----- ")
+            print(f"Arguments: args={args} | kwargs={kwargs}")
+            start_time = time.time()
+            
+            result = None
+            result_dict = {}
+            
+            try:
+                result = func(*args, **kwargs)
+            except Exception as e:
+                print(f"[ERROR] Error while function execution: {e}")
+                raise
+                
+            try:
+                if isinstance(result, str):
+                    result_dict = json.loads(result)
+                    print(f"[LOGGER] Function {func.__name__} returned {result}")
+                elif isinstance(result, dict):
+                    result_dict = result
+                    print(f"[LOGGER] Function {func.__name__} returned {result}")
+                else:
+                    raise ValueError(f"Incorrect return type from function. Expected str or dict. Recieved {type(result)}")
+            except Exception as e:
+                print(f"[ERROR] Error while parsing JSON: {e}")
+            # finally:
+            
+            end_time = time.time()
+            result_dict["latency_ms"] = round((end_time - start_time) * 1000, 2)
+                
+            print(f"[LOGGER] Endpoint latency (in ms) for '{func.__name__}': {round((end_time - start_time) * 1000, 2)} ms")
+            return result_dict  
         
             
-    return wrapper  
+        return wrapper
     

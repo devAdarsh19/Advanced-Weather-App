@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -12,6 +13,7 @@ import json
 from typing import Annotated, List
 import requests
 import os
+import subprocess
 import httpx
 import asyncio
 from datetime import datetime, timedelta
@@ -58,6 +60,56 @@ def get_db():
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
+# _redis_running_flag = False
+
+
+def redis_startup():
+    global _redis_running_flag
+
+    print(f"Starting Redis Server...", flush=True)
+    script_path_wsl = "/mnt/d/Python/Projects/Weather2/redis_startup.sh"
+
+    try:
+        print(f"Executing bash script...", flush=True)
+        startup_result = subprocess.run(
+            ["wsl", script_path_wsl],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=15,
+        )
+
+        print(f"----- WSL Output -----")
+        print(startup_result.stdout, flush=True)
+        print(f"-------- End ---------")
+
+        if startup_result.stderr:
+            print(f"----- WSL Errors -----")
+            print(startup_result.stderr, flush=True)
+            print(f"-------- End ---------")
+
+        print(f"Redis server startup successful.")
+        _redis_running_flag = True
+
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR: WSL script failed with exit code {e.returncode}.")
+        print(f"Command: {e.cmd}")
+        print(f"Stdout:\n{e.stdout}")
+        print(f"Stderr:\n{e.stderr}")
+    except FileNotFoundError:
+        print(
+            "ERROR: 'wsl.exe' not found. Make sure WSL is installed and in your PATH."
+        )
+    except subprocess.TimeoutExpired:
+        print("ERROR: WSL script timed out. Redis or the script might be stuck.")
+    except Exception as e:
+        print(f"An unexpected error occurred while running WSL script: {e}")
+
+
+
+
+redis_startup()
+
 home_page_weather_client = httpx.AsyncClient()
 top_cities_india = [
     "Bengaluru",
@@ -89,27 +141,28 @@ async def _home_page_weather_logic(city: str):
 
     try:
         response = await home_page_weather_client.get(
-            f"http://localhost:8000/api/weather", params={"location_q": city}
+            f"http://localhost:8000/api/weather", params={"location": city}
         )
-        data = response.json()
-        return {
-            "region": data["region"],
-            "temperature_c": data["temp_c"],
-            "temperature_f": data["temp_f"],
-            "condition": data["condition"],
-        }
+        # data = response.json()
+        return response
+        # return {
+        #     "location_name": data["location_name"],
+        #     "temperature_c": data["temp_c"],
+        #     "temperature_f": data["temp_f"],
+        #     "condition": data["condition"],
+        # }
 
     except httpx.RequestError as re:
         print(f"[ERROR] Request error for {city}: {re}", flush=True)
-        return {"region": city, "error": "Network error while fetching weather data"}
+        return {"region": city, "error": re}
 
     except httpx.HTTPStatusError as he:
         print(f"[ERROR] HTTP Status error for {city}: {he}", flush=True)
-        return {"region": city, "error": "Failed to fetch weather data"}
+        return {"region": city, "error": he}
 
     except Exception as e:
         print(f"[ERROR] An unexpected error occurred for {city}: {e}", flush=True)
-        return {"region": city, "error": "Unexpected error"}
+        return {"region": city, "error": e}
 
 
 ################## ENDPOINTS ##################
@@ -127,6 +180,11 @@ def root():
     return json.loads(welcome)
 
 
+@app.get("/favicon.ico")
+def load_favicon():
+    return FileResponse("./static/favicon.ico", type="image/x-icon")
+
+
 @app.get("/home")
 async def home_page_weather():
 
@@ -138,7 +196,7 @@ async def home_page_weather():
     home_weather_india = [_home_page_weather_logic(city) for city in top_cities_india]
     home_weather_india_response = await asyncio.gather(*home_weather_india)
     endpoint_response["home_weather"] = home_weather_india_response
-    
+
     home_weather_abroad = [_home_page_weather_logic(city) for city in top_cities_abroad]
     home_weather_abroad_response = await asyncio.gather(*home_weather_abroad)
     endpoint_response["abroad_weather"] = home_weather_abroad_response
@@ -258,7 +316,7 @@ def get_weather(
         # Add to cache
         redis_client.setex(location_key, 1800, weather_data)
 
-        return weather_data
+        return weather_data if weather_data else {"error": f"No data for {location_q}"}
 
     return get_weather_logic(location_q=location_q, db=db)
 
