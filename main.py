@@ -24,6 +24,8 @@ from utils import logger
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session, joinedload
 
+from wsl_automation import ensure_redis_alive
+
 load_dotenv()
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 WEATHER_API_URL = "https://api.weatherapi.com/v1"
@@ -60,53 +62,56 @@ def get_db():
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
+ensure_redis_alive()
+
 # _redis_running_flag = False
 
 
-def redis_startup():
-    global _redis_running_flag
+# def redis_startup():
+#     global _redis_running_flag
 
-    print(f"Starting Redis Server...", flush=True)
-    script_path_wsl = "/mnt/d/Python/Projects/Weather2/redis_startup.sh"
+#     print(f"Starting Redis Server...", flush=True)
+#     script_path_wsl = "/mnt/d/Python/Projects/Weather2/redis_startup.sh"
 
-    try:
-        print(f"Executing bash script...", flush=True)
-        startup_result = subprocess.run(
-            ["wsl", script_path_wsl],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=15,
-        )
+#     try:
+#         print(f"Executing bash script...", flush=True)
+#         startup_result = subprocess.run(
+#             ["wsl", script_path_wsl],
+#             capture_output=True,
+#             text=True,
+#             check=True,
+#             timeout=15,
+#         )
 
-        print(f"----- WSL Output -----")
-        print(startup_result.stdout, flush=True)
-        print(f"-------- End ---------")
+#         print(f"----- WSL Output -----")
+#         print(startup_result.stdout, flush=True)
+#         print(f"-------- End ---------")
 
-        if startup_result.stderr:
-            print(f"----- WSL Errors -----")
-            print(startup_result.stderr, flush=True)
-            print(f"-------- End ---------")
+#         if startup_result.stderr:
+#             print(f"----- WSL Errors -----")
+#             print(startup_result.stderr, flush=True)
+#             print(f"-------- End ---------")
 
-        print(f"Redis server startup successful.")
-        _redis_running_flag = True
+#         print(f"Redis server startup successful.")
+#         _redis_running_flag = True
 
-    except subprocess.CalledProcessError as e:
-        print(f"ERROR: WSL script failed with exit code {e.returncode}.")
-        print(f"Command: {e.cmd}")
-        print(f"Stdout:\n{e.stdout}")
-        print(f"Stderr:\n{e.stderr}")
-    except FileNotFoundError:
-        print(
-            "ERROR: 'wsl.exe' not found. Make sure WSL is installed and in your PATH."
-        )
-    except subprocess.TimeoutExpired:
-        print("ERROR: WSL script timed out. Redis or the script might be stuck.")
-    except Exception as e:
-        print(f"An unexpected error occurred while running WSL script: {e}")
+#     except subprocess.CalledProcessError as e:
+#         print(f"ERROR: WSL script failed with exit code {e.returncode}.")
+#         print(f"Command: {e.cmd}")
+#         print(f"Stdout:\n{e.stdout}")
+#         print(f"Stderr:\n{e.stderr}")
+#     except FileNotFoundError:
+#         print(
+#             "ERROR: 'wsl.exe' not found. Make sure WSL is installed and in your PATH."
+#         )
+#     except subprocess.TimeoutExpired:
+#         print("ERROR: WSL script timed out. Redis or the script might be stuck.")
+#     except Exception as e:
+#         print(f"An unexpected error occurred while running WSL script: {e}")
 
 
-redis_startup()
+# redis_startup()
+
 
 home_page_weather_client = httpx.AsyncClient()
 top_cities_india = [
