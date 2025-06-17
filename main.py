@@ -106,8 +106,6 @@ def redis_startup():
         print(f"An unexpected error occurred while running WSL script: {e}")
 
 
-
-
 redis_startup()
 
 home_page_weather_client = httpx.AsyncClient()
@@ -143,26 +141,26 @@ async def _home_page_weather_logic(city: str):
         response = await home_page_weather_client.get(
             f"http://localhost:8000/api/weather", params={"location": city}
         )
-        # data = response.json()
-        return response
-        # return {
-        #     "location_name": data["location_name"],
-        #     "temperature_c": data["temp_c"],
-        #     "temperature_f": data["temp_f"],
-        #     "condition": data["condition"],
-        # }
+        data = response.json()
+        # return response
+        return {
+            "location_name": data["location_name"],
+            "temperature_c": data["temp_c"],
+            "temperature_f": data["temp_f"],
+            "condition": data["condition"],
+        }
 
     except httpx.RequestError as re:
         print(f"[ERROR] Request error for {city}: {re}", flush=True)
-        return {"region": city, "error": re}
+        return {"region": city, "error": "Request Error"}
 
     except httpx.HTTPStatusError as he:
         print(f"[ERROR] HTTP Status error for {city}: {he}", flush=True)
-        return {"region": city, "error": he}
+        return {"region": city, "error": "HTTP Status Error"}
 
     except Exception as e:
         print(f"[ERROR] An unexpected error occurred for {city}: {e}", flush=True)
-        return {"region": city, "error": e}
+        return {"region": city, "error": "Error"}
 
 
 ################## ENDPOINTS ##################
@@ -205,7 +203,7 @@ async def home_page_weather():
 
 
 @app.get("/api/weather")
-@limiter.limit("5/minute")
+@limiter.limit("20/minute")
 def get_weather(
     db: db_dependency, request: Request, location_q: str = Query(..., alias="location")
 ):
