@@ -45,9 +45,10 @@ app.add_middleware(
 models.Base.metadata.create_all(bind=engine)
 
 # Initialize Redis client
-redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
+redis_client = redis.Redis(host="192.168.212.203", port=6379, db=0, decode_responses=True)
+print(redis_client.ping())
 
-limiter = Limiter(key_func=get_remote_address, storage_uri="redis://localhost:6379")
+limiter = Limiter(key_func=get_remote_address, storage_uri="redis://192.168.212.203:6379")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
