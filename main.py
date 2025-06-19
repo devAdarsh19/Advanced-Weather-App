@@ -24,8 +24,6 @@ from utils import logger
 from database import engine, SessionLocal
 from sqlalchemy.orm import Session, joinedload
 
-from wsl_automation import ensure_redis_alive
-
 load_dotenv()
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 WEATHER_API_URL = "https://api.weatherapi.com/v1"
@@ -44,14 +42,18 @@ app.add_middleware(
 # Create DB tables
 models.Base.metadata.create_all(bind=engine)
 
-# Initialize Redis client
-redis_client = redis.Redis(host="192.168.212.203", port=6379, db=0, decode_responses=True)
-print(redis_client.ping())
 
-limiter = Limiter(key_func=get_remote_address, storage_uri="redis://192.168.212.203:6379")
+# Initialize Redis client
+redis_client = redis.Redis(
+    port=6379, db=0, decode_responses=True
+)
+print(f"Redis server ping successful? {redis_client.ping()}")
+
+limiter = Limiter(
+    key_func=get_remote_address, storage_uri="redis://localhost:6379"
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
 
 def get_db():
     db = SessionLocal()
@@ -60,58 +62,8 @@ def get_db():
     finally:
         db.close()
 
-
 db_dependency = Annotated[Session, Depends(get_db)]
 
-ensure_redis_alive()
-
-# _redis_running_flag = False
-
-
-# def redis_startup():
-#     global _redis_running_flag
-
-#     print(f"Starting Redis Server...", flush=True)
-#     script_path_wsl = "/mnt/d/Python/Projects/Weather2/redis_startup.sh"
-
-#     try:
-#         print(f"Executing bash script...", flush=True)
-#         startup_result = subprocess.run(
-#             ["wsl", script_path_wsl],
-#             capture_output=True,
-#             text=True,
-#             check=True,
-#             timeout=15,
-#         )
-
-#         print(f"----- WSL Output -----")
-#         print(startup_result.stdout, flush=True)
-#         print(f"-------- End ---------")
-
-#         if startup_result.stderr:
-#             print(f"----- WSL Errors -----")
-#             print(startup_result.stderr, flush=True)
-#             print(f"-------- End ---------")
-
-#         print(f"Redis server startup successful.")
-#         _redis_running_flag = True
-
-#     except subprocess.CalledProcessError as e:
-#         print(f"ERROR: WSL script failed with exit code {e.returncode}.")
-#         print(f"Command: {e.cmd}")
-#         print(f"Stdout:\n{e.stdout}")
-#         print(f"Stderr:\n{e.stderr}")
-#     except FileNotFoundError:
-#         print(
-#             "ERROR: 'wsl.exe' not found. Make sure WSL is installed and in your PATH."
-#         )
-#     except subprocess.TimeoutExpired:
-#         print("ERROR: WSL script timed out. Redis or the script might be stuck.")
-#     except Exception as e:
-#         print(f"An unexpected error occurred while running WSL script: {e}")
-
-
-# redis_startup()
 
 
 home_page_weather_client = httpx.AsyncClient()
@@ -186,7 +138,7 @@ def root():
 
 @app.get("/favicon.ico")
 def load_favicon():
-    return FileResponse("./static/favicon.ico", type="image/x-icon")
+    return FileResponse("./static/favicon.ico")
 
 
 @app.get("/home")
@@ -218,7 +170,6 @@ def get_weather(
 
         # Check for cached data in redis
         location_key = f"key:{location_q.strip().lower()}"
-
         cached = redis_client.get(location_key)
         if cached:
             print(f"Cache hit for location: {location_q}", flush=True)
@@ -317,7 +268,7 @@ def get_weather(
                 "condition": current["condition"]["text"],
             }
         )
-        # Add to cache
+            # Add to cache
         redis_client.setex(location_key, 1800, weather_data)
 
         return weather_data if weather_data else {"error": f"No data for {location_q}"}
@@ -345,6 +296,7 @@ def get_forecast(
         # We check for cache hit here
 
         location_forecast_key = f"forecast:{location.strip().lower()}:{days}"
+        
         cached = redis_client.get(location_forecast_key)
         if cached:
             print(f"Cache hit for forecast location: {location}", flush=True)
