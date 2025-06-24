@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import Navbar from "./Navbar";
 
 const Weather = () => {
   const [locationData, setLocationData] = useState("");
@@ -28,6 +29,9 @@ const Weather = () => {
 
   return (
     <>
+      <Navbar />
+      <h2>Get Current Weather</h2>
+      <br />
       <div className="current-weather">
         <form onSubmit={handleSubmit}>
           <label htmlFor="location">Location</label>

@@ -19,6 +19,7 @@ def start_processes():
     
     print(f"----- Running startup processes -----")
     # checking for active wsl / ubuntu instance
+    print(f"Ubuntu running: {is_wsl_running("Ubuntu")}")
     if not is_wsl_running("Ubuntu"):
         try:
             # Starting wsl if not found

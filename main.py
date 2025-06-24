@@ -141,7 +141,7 @@ def load_favicon():
     return FileResponse("./static/favicon.ico")
 
 
-@app.get("/home")
+@app.get("/api/home")
 async def home_page_weather():
 
     endpoint_response = {}
@@ -161,7 +161,7 @@ async def home_page_weather():
 
 
 @app.get("/api/weather")
-@limiter.limit("20/minute")
+@limiter.limit("50/minute")
 def get_weather(
     db: db_dependency, request: Request, location_q: str = Query(..., alias="location")
 ):
@@ -277,7 +277,7 @@ def get_weather(
 
 
 @app.get("/api/forecast")
-@limiter.limit("5/minute")
+@limiter.limit("20/minute")
 def get_forecast(
     db: db_dependency,
     request: Request,
