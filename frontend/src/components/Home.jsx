@@ -14,7 +14,7 @@ const Home = () => {
 
     setHomeWeather(response.data.home_weather);
     setAbroadWeather(response.data["abroad_weather"]);
-    console.log(response.data);
+    console.log(response);
     // console.log(`abroad_weather: ${response.data}`);
   };
 
@@ -55,8 +55,7 @@ const Home = () => {
               <p>Location: {homeLocation.location_name}</p>
               <p>Condition: {homeLocation.condition}</p>
               <p>
-                Temperature: {homeLocation.temperature_c} /{" "}
-                {homeLocation.temperature_f}
+                Temperature: {homeLocation.temperature_c} / {homeLocation.temperature_f}
               </p>
             </div>;
           })}
@@ -70,8 +69,7 @@ const Home = () => {
               <p>Location: {abroadLocation.location_name}</p>
               <p>Condition: {abroadLocation.condition}</p>
               <p>
-                Temperature: {abroadLocation.temperature_c} /{" "}
-                {abroadLocation.temperature_f}
+                Temperature: {abroadLocation.temperature_c} / {abroadLocation.temperature_f}
               </p>
             </div>;
           })}

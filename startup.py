@@ -1,3 +1,4 @@
+import time
 
 import subprocess
 
@@ -31,6 +32,8 @@ def start_processes():
             raise
     else:
         print(f"---- Redis instance already running")
+    
+    time.sleep(10) # Wait for redis start    
     
     print("#################################")
     
