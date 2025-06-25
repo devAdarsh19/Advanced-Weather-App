@@ -13,9 +13,7 @@ const Home = () => {
     });
 
     setHomeWeather(response.data.home_weather);
-    setAbroadWeather(response.data["abroad_weather"]);
-    console.log(response);
-    // console.log(`abroad_weather: ${response.data}`);
+    setAbroadWeather(response.data.abroad_weather);
   };
 
   useEffect(() => {
@@ -51,27 +49,43 @@ const Home = () => {
       <div className="homepage-weather">
         {homeWeather &&
           homeWeather.map((homeLocation, index) => {
-            <div key={index}>
-              <p>Location: {homeLocation.location_name}</p>
-              <p>Condition: {homeLocation.condition}</p>
-              <p>
-                Temperature: {homeLocation.temperature_c} / {homeLocation.temperature_f}
-              </p>
-            </div>;
+            return (
+              <div key={index}>
+                <br />
+                <p>
+                  <strong>Location:</strong> {homeLocation.location_name}
+                </p>
+                <p>
+                  <strong>Condition:</strong> {homeLocation.condition}
+                </p>
+                <p>
+                  <strong>Temperature:</strong> {homeLocation.temperature_c}℃ / {homeLocation.temperature_f}℉
+                  
+                </p>
+              </div>
+            );
           })}
       </div>
 
+      <br />
       <h2>Popular cities around the world</h2>
       <div className="homepage-weather">
         {abroadWeather &&
           abroadWeather.map((abroadLocation, index) => {
-            <div key={index}>
-              <p>Location: {abroadLocation.location_name}</p>
-              <p>Condition: {abroadLocation.condition}</p>
-              <p>
-                Temperature: {abroadLocation.temperature_c} / {abroadLocation.temperature_f}
-              </p>
-            </div>;
+            return (
+              <div key={index}>
+                <br />
+                <p>
+                  <strong>Location:</strong> {abroadLocation.location_name}
+                </p>
+                <p>
+                  <strong>Condition:</strong> {abroadLocation.condition}
+                </p>
+                <p>
+                  <strong>Temperature:</strong> {abroadLocation.temperature_c}℃ / {abroadLocation.temperature_f}℉
+                </p>
+              </div>
+            );
           })}
       </div>
     </>
