@@ -64,7 +64,9 @@ def get_db():
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-
+# Constants
+WEATHER_CACHE_TTL = 1800
+FORECAST_CACHE_TTL = 3600 * 6
 
 home_page_weather_client = httpx.AsyncClient()
 top_cities_india = [
@@ -170,11 +172,12 @@ def get_weather(
 
         # Check for cached data in redis
         location_key = f"key:{location_q.strip().lower()}"
-        cached = redis_client.get(location_key)
-        if cached:
+        # cachedWeather = redis_client.get(location_key)
+
+        if cachedWeather := redis_client.get(location_key):
             print(f"Cache hit for location: {location_q}", flush=True)
 
-            return json.loads(cached)
+            return cachedWeather
 
         ##############################################################################
         # Check DB to retrieve data if cache miss
@@ -187,19 +190,8 @@ def get_weather(
 
         # if DB entry exists and is not stale, add to cache and return it
         if db_entry and db_entry.fetched_at > datetime.now() - timedelta(minutes=30):
-            response = {
-                "location_name": db_entry.location_name,
-                "region": db_entry.region,
-                "country": db_entry.country,
-                "latitude": db_entry.latitude,
-                "longitude": db_entry.longitude,
-                "timezone": db_entry.timezone,
-                "localtime": db_entry.localtime.isoformat(),
-                "temp_c": db_entry.temp_c,
-                "temp_f": db_entry.temp_f,
-                "condition": db_entry.condition,
-            }
-            redis_client.setex(location_key, 1800, json.dumps(response))
+            response = utils.serialize_weather_data(db_entry)
+            redis_client.setex(location_key, WEATHER_CACHE_TTL, response)
 
             return response
 
@@ -217,7 +209,9 @@ def get_weather(
         location = data["location"]
         current = data["current"]
 
-        # If DB entry for location found
+        cache_weather_entry = None
+
+        # If DB entry for location found (must be stale and needs to be updated)
         if db_entry:
             print(f"Found an existing record")
             db_entry.localtime = location["localtime"]
@@ -254,24 +248,23 @@ def get_weather(
             db.commit()
             db.refresh(current_weather)
 
-        weather_data = json.dumps(
-            {
-                "location_name": location["name"],
-                "region": location["region"],
-                "country": location["country"],
-                "latitude": location["lat"],
-                "longitude": location["lon"],
-                "timezone": location["tz_id"],
-                "localtime": location["localtime"],
-                "temp_c": current["temp_c"],
-                "temp_f": current["temp_f"],
-                "condition": current["condition"]["text"],
-            }
-        )
-            # Add to cache
-        redis_client.setex(location_key, 1800, weather_data)
+            cache_weather_entry = current_weather
 
-        return weather_data if weather_data else {"error": f"No data for {location_q}"}
+        try:
+            cache_weather_entry = utils.serialize_weather_data(cache_weather_entry)
+            # Add to cache
+            redis_client.setex(location_key, WEATHER_CACHE_TTL, cache_weather_entry)
+        except AttributeError as e:
+            print(
+                f"[ERROR] Error while weather serialization (NoneType object passed). Try again: \n{e}"
+            )
+            raise
+
+        return (
+            cache_weather_entry
+            if cache_weather_entry
+            else {"error": f"No data for {location_q}"}
+        )
 
     return get_weather_logic(location_q=location_q, db=db)
 
@@ -285,7 +278,7 @@ def get_forecast(
     days: int = Query(..., alias="days"),
 ):
     @logger
-    def get_forecast_logic(location: str, days: int, db: Session):
+    def get_forecast_logic(location: str, db: Session, days: int = 2):
 
         # Forecast limit is 5 days. Raise 400 error if days > 5
         if days > 5:
@@ -294,14 +287,13 @@ def get_forecast(
             )
 
         # We check for cache hit here
-
         location_forecast_key = f"forecast:{location.strip().lower()}:{days}"
-        
-        cached = redis_client.get(location_forecast_key)
-        if cached:
+
+        # cached_forecast = redis_client.get(location_forecast_key)
+        if cached_forecast := redis_client.get(location_forecast_key):
             print(f"Cache hit for forecast location: {location}", flush=True)
 
-            data = json.loads(cached)
+            data = json.loads(cached_forecast)
             return data
 
         # Query database to check if location exists. Do not add again
@@ -323,9 +315,9 @@ def get_forecast(
         # If db_entry exists and is not stale
         if db_entry and db_entry.localtime > datetime.now() - timedelta(hours=1):
 
-            response = utils.create_forecast_response(db_entry)
+            response = utils.serialize_forecast_data(db_entry)
             redis_client.setex(
-                location_forecast_key, time=3600, value=json.dumps(response)
+                location_forecast_key, time=FORECAST_CACHE_TTL, value=response
             )
 
             return response
@@ -347,7 +339,7 @@ def get_forecast(
         current = data["current"]
         forecast = data["forecast"]["forecastday"]
 
-        cache_weather_entry = None
+        cache_forecast_entry = None
 
         if db_entry:
             print(
@@ -387,7 +379,7 @@ def get_forecast(
                     hour.condition = hour_data["condition"]["text"]
 
             db.commit()
-            cache_weather_entry = db_entry
+            cache_forecast_entry = db_entry
 
             print(
                 f"Updated existing forecast DB record for location: {location}",
@@ -443,14 +435,15 @@ def get_forecast(
             db.add(weather_entry)
             db.commit()
 
-            cache_weather_entry = weather_entry
-            # db.refresh(weather_entry)
+            cache_forecast_entry = weather_entry
 
         # Add to cache. This ensures that updated or new DB entries are found in cache, ensuring freshness.
-        cache_data = json.dumps(utils.serialize_weather_data(cache_weather_entry))
+        cache_forecast_data = utils.serialize_forecast_data(cache_forecast_entry)
 
-        redis_client.setex(location_forecast_key, time=3600, value=cache_data)
+        redis_client.setex(
+            location_forecast_key, time=FORECAST_CACHE_TTL, value=cache_forecast_data
+        )
 
-        return cache_data
+        return cache_forecast_data
 
     return get_forecast_logic(location=location, days=days, db=db)

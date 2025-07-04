@@ -5,7 +5,7 @@ import "../App.css";
 const Navbar = () => {
   return (
     <div>
-      <div className="navbar">
+      {/* <div className="navbar">
         <nav>
           <ul className="nav-items">
             <div className="logo">
@@ -30,7 +30,31 @@ const Navbar = () => {
             </div>
           </ul>
         </nav>
-      </div>
+      </div> */}
+      <nav class="sticky top-0 my-5 mx-auto flex items-center justify-between bg-purple-700 p-4 rounded-b-md shadow-md">
+        <div>
+          <Link to="/">
+            <h1 class="text-white text-2xl font-bold">Weather App</h1>
+          </Link>
+        </div>
+        <div class="flex gap-x-6">
+          <Link to="/">
+            <h3 class="text-purple-100 hover:text-white text-lg font-medium transition-colors duration-200">
+              Home
+            </h3>
+          </Link>
+          <Link to="/">
+            <h3 class="text-purple-100 hover:text-white text-lg font-medium transition-colors duration-200">
+              About
+            </h3>
+          </Link>
+          <Link to="/">
+            <h3 class="text-purple-100 hover:text-white text-lg font-medium transition-colors duration-200">
+              Help
+            </h3>
+          </Link>
+        </div>
+      </nav>
     </div>
   );
 };

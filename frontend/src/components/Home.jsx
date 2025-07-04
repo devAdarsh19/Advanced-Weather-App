@@ -34,19 +34,23 @@ const Home = () => {
       <div>
         <h2>Get Weather Information</h2>
         <Link to="/weather">
-          <button>Weather</button>
+          <button class="px-10 bg-sky-500 hover:bg-sky-600 rounded-xl">
+            Weather
+          </button>
         </Link>
       </div>
 
       <div>
         <h2>Get Forecast Information</h2>
         <Link to="/forecast">
-          <button>Forecast</button>
+          <button class="mx-auto flex bg-sky-500 hover:bg-sky-600 rounded-xl">
+            Forecast
+          </button>
         </Link>
       </div>
 
-      <h2>Popular cities in your area</h2>
       <div className="homepage-weather">
+        <h2>Popular cities in your area</h2>
         {homeWeather &&
           homeWeather.map((homeLocation, index) => {
             return (
@@ -59,8 +63,8 @@ const Home = () => {
                   <strong>Condition:</strong> {homeLocation.condition}
                 </p>
                 <p>
-                  <strong>Temperature:</strong> {homeLocation.temperature_c}℃ / {homeLocation.temperature_f}℉
-                  
+                  <strong>Temperature:</strong> {homeLocation.temperature_c}℃ /{" "}
+                  {homeLocation.temperature_f}℉
                 </p>
               </div>
             );
@@ -68,8 +72,9 @@ const Home = () => {
       </div>
 
       <br />
-      <h2>Popular cities around the world</h2>
+
       <div className="homepage-weather">
+        <h2>Popular cities around the world</h2>
         {abroadWeather &&
           abroadWeather.map((abroadLocation, index) => {
             return (
@@ -82,7 +87,8 @@ const Home = () => {
                   <strong>Condition:</strong> {abroadLocation.condition}
                 </p>
                 <p>
-                  <strong>Temperature:</strong> {abroadLocation.temperature_c}℃ / {abroadLocation.temperature_f}℉
+                  <strong>Temperature:</strong> {abroadLocation.temperature_c}℃
+                  / {abroadLocation.temperature_f}℉
                 </p>
               </div>
             );

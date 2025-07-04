@@ -1,6 +1,6 @@
+@import "tailwindcss";
 
-
-.navbar {
+/* .navbar {
     height: 60px;
     background-color: darkslategray;
     z-index: 999;
@@ -41,7 +41,7 @@
 
 button:hover {
     cursor: pointer;
-}
+} */
 
 
 
